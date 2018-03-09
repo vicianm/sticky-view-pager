@@ -5,18 +5,25 @@ import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ScrollView;
 
+/**
+ * {@link ViewPager} with the ability to work in vertical scale.
+ * This pager has to backed by {@link VerticalPagerAdapter} ({@see #getAdater}).
+ */
 public class VerticalViewPager extends ViewPager {
 
     public static final int HORIZONTAL = 0;
     public static final int VERTICAL = 1;
 
     private int mSwipeOrientation;
-//    private ScrollerCustomDuration mScroller = null;
+
+    private float mmLastMotionY;
+
+    boolean childTopOverScroll = false;
+    boolean childBottomOverScroll = false;
 
     public VerticalViewPager(Context context) {
         super(context);
@@ -30,17 +37,7 @@ public class VerticalViewPager extends ViewPager {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        boolean result = super.onTouchEvent(mSwipeOrientation == VERTICAL ? swapXY(event) : event);
-        Log.d("TestVerticalViewPager", "### TestVerticalViewPager.onTouchEvent: " + result);
-
-//        View child = getChildAt(0);
-//        if (child instanceof ScrollView) {
-//            ScrollView scrollView = (ScrollView) child;
-//            Log.d("TestVerticalViewPager", "### onTouchEvent.scrollView.getScrollY: " + scrollView.getScrollY());
-//            Log.d("TestVerticalViewPager", "### onTouchEvent.scrollView.getScrollX: " + scrollView.getScrollX());
-//        }
-
-        return result;
+        return super.onTouchEvent(mSwipeOrientation == VERTICAL ? swapXY(event) : event);
     }
 
     @Override
@@ -51,13 +48,14 @@ public class VerticalViewPager extends ViewPager {
         super.setAdapter(adapter);
     }
 
-    public VerticalPagerAdapter getTestPagerAdapter() {
+    /**
+     * Retrieve the current {@link VerticalPagerAdapter} supplying pages.
+     *
+     * @return The currently registered {@link VerticalPagerAdapter}
+     */
+    public VerticalPagerAdapter getAdapter() {
         return (VerticalPagerAdapter) super.getAdapter();
     }
-
-    private float mmLastMotionY;
-    boolean childTopOverScroll = false;
-    boolean childBottomOverScroll = false;
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent event) {
@@ -69,7 +67,7 @@ public class VerticalViewPager extends ViewPager {
 
         final int action = event.getAction() & MotionEventCompat.ACTION_MASK;
 
-        Object child = getTestPagerAdapter().getPrimaryItemObject();
+        Object child = getAdapter().getPrimaryItemObject();
         ScrollView childScrollView = (child instanceof ScrollView) ? (ScrollView) child : null;
 
         if (action == MotionEvent.ACTION_MOVE) {
@@ -78,8 +76,6 @@ public class VerticalViewPager extends ViewPager {
             // Intercept only if ScrollView is scrolled to the very top/bottom.
             // Otherwise let ScrollView do its work first - just scroll according to user gesture.
             if (childScrollView != null) {
-
-                Log.d("TestVerticalViewPager", "### onInterceptTouchEvent.scrollView.getScrollY: " + childScrollView.getScrollY() + " hash: " + childScrollView.hashCode());
 
                 final float y = swappedMotionEvent.getY(0);
                 final float dy = y - mmLastMotionY;
@@ -95,12 +91,10 @@ public class VerticalViewPager extends ViewPager {
         mmLastMotionY = swappedMotionEvent.getY(0);
 
         if (childScrollView == null || childTopOverScroll || childBottomOverScroll || action == MotionEvent.ACTION_DOWN) {
-            boolean intercepted = super.onInterceptTouchEvent(swappedMotionEvent);
-            Log.d("TestVerticalViewPager", "### onInterceptTouchEvent.#intercepted: " + intercepted);
-            return intercepted;
+            return super.onInterceptTouchEvent(swappedMotionEvent);
+        } else {
+            return false;
         }
-
-        return false;
     }
 
     protected boolean isScrolledToTop(ScrollView scrollView) {
@@ -116,15 +110,6 @@ public class VerticalViewPager extends ViewPager {
 
     }
 
-    @Override
-    public void requestDisallowInterceptTouchEvent(boolean disallowIntercept) {
-        Log.d("TestVerticalViewPager", "### TestVerticalViewPager.requestDisallowInterceptTouchEvent: " + disallowIntercept);
-        if (disallowIntercept) {
-//            Log.d("TestVerticalViewPager", "### TestVerticalViewPager.requestDisallowInterceptTouchEvent: " + disallowIntercept);
-        }
-        super.requestDisallowInterceptTouchEvent(disallowIntercept);
-    }
-
     public void setSwipeOrientation(int swipeOrientation) {
         if (swipeOrientation == HORIZONTAL || swipeOrientation == VERTICAL)
             mSwipeOrientation = swipeOrientation;
@@ -134,13 +119,6 @@ public class VerticalViewPager extends ViewPager {
         initSwipeMethods();
     }
 
-//    private void setSwipeOrientation(Context context, AttributeSet attrs) {
-//        TypedArray typedArray = context.obtainStyledAttributes(attrs, R.styleable.CustomViewPager);
-//        mSwipeOrientation = typedArray.getInteger(R.styleable.CustomViewPager_swipe_orientation, 0);
-//        typedArray.recycle();
-//        initSwipeMethods();
-//    }
-
     private void initSwipeMethods() {
         if (mSwipeOrientation == VERTICAL) {
             // The majority of the work is done over here
@@ -148,13 +126,6 @@ public class VerticalViewPager extends ViewPager {
             // The easiest way to get rid of the overscroll drawing that happens on the left and right
             setOverScrollMode(OVER_SCROLL_NEVER);
         }
-    }
-
-    /**
-     * Set the factor by which the duration will change~
-     */
-    public void setScrollDurationFactor(double scrollFactor) {
-//        mScroller.setScrollDurationFactor(scrollFactor);
     }
 
     private MotionEvent swapXY(MotionEvent event) {
@@ -169,13 +140,6 @@ public class VerticalViewPager extends ViewPager {
 
         clone.setLocation(newX, newY);
         return clone;
-    }
-
-    @Override
-    protected boolean canScroll(View v, boolean checkV, int dx, int x, int y) {
-        return super.canScroll(v, checkV, dx, x, y);
-//        Log.d("TestVerticalViewPager", "@@@ canScroll");
-//        return true;
     }
 
     private class VerticalPageTransformer implements PageTransformer {

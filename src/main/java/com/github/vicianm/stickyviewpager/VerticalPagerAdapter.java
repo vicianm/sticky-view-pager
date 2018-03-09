@@ -2,8 +2,6 @@ package com.github.vicianm.stickyviewpager;
 
 import android.content.Context;
 import android.support.v4.view.PagerAdapter;
-import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 
 /**
@@ -32,6 +30,9 @@ public abstract class VerticalPagerAdapter extends PagerAdapter {
         super.setPrimaryItem(container, position, object);
     }
 
+    /**
+     * @return Currently active pager object (View).
+     */
     public Object getPrimaryItemObject() {
         return primaryItemObject;
     }
